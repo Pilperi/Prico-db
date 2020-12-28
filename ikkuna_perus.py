@@ -21,6 +21,8 @@ TARKISTUSKENTTA = (TAVARALISTA[0], TAVARALISTA[1]+TAVARALISTA[3], TAVARALISTA[2]
 TAVARANAPPI     = (TAVARALISTA[0]+TAVARALISTA[2], MARGINAALIT[1], 200, 200)
 # Tavaran kuvanimen syöttö
 KUVAKENTTA      = (TAVARANAPPI[0], TAVARANAPPI[1]+TAVARANAPPI[3], TAVARANAPPI[2], TAVARALISTA[3])
+# Tarkistusteksti
+TIIVISTEKSTI    = (KUVAKENTTA[0], KUVAKENTTA[1]+KUVAKENTTA[3], KUVAKENTTA[2], KUVAKENTTA[3])
 
 # Syöttökentät
 # Tavaran nimi
@@ -56,11 +58,18 @@ OSASNAPPI      = (OSASMAARA[0]+OSASMAARA[2], OSASMAARA[1], int(0.5*(NIMIKENTTA[2
 
 # Tuloskenttä
 LABEL_TIEDOT    = (NIMILABEL[0]+NIMILABEL[2]+MARGINAALIT[0], NIMILABEL[1], IKKUNAMITAT[0]-MARGINAALIT[0]-NIMILABEL[0]-NIMILABEL[2]-MARGINAALIT[0], 20)
-TAVARATIEDOT    = (LABEL_TIEDOT[0], LABEL_TIEDOT[1]+LABEL_TIEDOT[3], LABEL_TIEDOT[2], 200)
+TAVARATIEDOT    = (LABEL_TIEDOT[0], LABEL_TIEDOT[1]+LABEL_TIEDOT[3], LABEL_TIEDOT[2], 220)
 
 # Lisää listaan
 LISAYSLABEL     = (TAVARATIEDOT[0], TAVARATIEDOT[1]+TAVARATIEDOT[3], TAVARATIEDOT[2], NIMILABEL[3])
 LISAYSNAPPI     = (LISAYSLABEL[0], LISAYSLABEL[1]+LISAYSLABEL[3], LISAYSLABEL[2], NIMIKENTTA[3])
+
+# Tallenna tietokanta
+TALLENNUSLABEL  = (LISAYSNAPPI[0], LISAYSNAPPI[1]+LISAYSNAPPI[3], LISAYSNAPPI[2], LISAYSNAPPI[3])
+TALLENNUSNAPPI  = (TALLENNUSLABEL[0], TALLENNUSLABEL[1]+TALLENNUSLABEL[3], TALLENNUSLABEL[2], TALLENNUSLABEL[3])
+# Lue tietokanta
+LATAUSLABEL  = (TALLENNUSNAPPI[0], TALLENNUSNAPPI[1]+TALLENNUSNAPPI[3], TALLENNUSNAPPI[2], TALLENNUSNAPPI[3])
+LATAUSNAPPI  = (LATAUSLABEL[0], LATAUSLABEL[1]+LATAUSLABEL[3], LATAUSLABEL[2], LATAUSLABEL[3])
 
 def kuva_pixmapiksi(tiedostopolku, mitat):
 	'''
@@ -99,7 +108,8 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.tavara = priluokat.Varuste()
 		print(str(self.tavara))
 		# Jo määritetyt tavarat
-		self.tavarat = []
+		# Varustetietokanta
+		self.varustetietokanta = priluokat.Varustetietokanta()
 		self.tavaralista = QtWidgets.QComboBox(self)
 		self.tavaralista.setGeometry(QtCore.QRect(*TAVARALISTA))
 		# Esikatselu jo määritelly tavaralle
@@ -277,6 +287,15 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.tarkistus_tavaratiedot.setAlignment(QtCore.Qt.AlignTop)
 		self.tarkistus_tavaratiedot.setWordWrapMode(0)
 		self.tarkistus_tavaratiedot.setStyleSheet("background-color: #31363b")
+		# Tarkistustavaran tiivistys
+		self.tarkistus_tiivis = QtWidgets.QTextEdit(self)
+		self.tarkistus_tiivis.setGeometry(QtCore.QRect(*TIIVISTEKSTI))
+		self.tarkistus_tiivis.setText("")
+		self.tarkistus_tiivis.setReadOnly(True)
+		self.tarkistus_tiivis.setAlignment(QtCore.Qt.AlignTop)
+		self.tarkistus_tiivis.setWordWrapMode(0)
+		self.tarkistus_tiivis.setStyleSheet("background-color: #31363b")
+		# Kiinnitä signaali
 		self.tavaralista.currentIndexChanged.connect(self.paivita_tarkastuskentta)
 
 		# Lisää tavara listaan: label
@@ -291,11 +310,40 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.nappi_lisaa_tavara.setStyleSheet("background-color: #31363b")
 		self.nappi_lisaa_tavara.clicked.connect(self.lisaa_listaan)
 
+		# Tallenna tietokanta: label
+		self.label_tallenna_tietokanta = QtWidgets.QLabel(self)
+		self.label_tallenna_tietokanta.setGeometry(QtCore.QRect(*TALLENNUSLABEL))
+		self.label_tallenna_tietokanta.setText("Tallenna tietokanta")
+		# Lisää tavara listaan: nappi
+		self.nappi_tallenna_tietokanta = QtWidgets.QPushButton(self)
+		self.nappi_tallenna_tietokanta.setGeometry(QtCore.QRect(*TALLENNUSNAPPI))
+		self.nappi_tallenna_tietokanta.setFocusPolicy(QtCore.Qt.NoFocus)
+		self.nappi_tallenna_tietokanta.setText("Tallenna tietokanta")
+		self.nappi_tallenna_tietokanta.setStyleSheet("background-color: #31363b")
+		self.nappi_tallenna_tietokanta.clicked.connect(lambda t: self.varustetietokanta.tallenna("varustetietokanta.json"))
+
+		# Lue tietokanta: label
+		self.label_lue_tietokanta = QtWidgets.QLabel(self)
+		self.label_lue_tietokanta.setGeometry(QtCore.QRect(*LATAUSLABEL))
+		self.label_lue_tietokanta.setText("Lue tietokanta tiedostosta")
+		# Lisää tavara listaan: nappi
+		self.nappi_lue_tietokanta = QtWidgets.QPushButton(self)
+		self.nappi_lue_tietokanta.setGeometry(QtCore.QRect(*LATAUSNAPPI))
+		self.nappi_lue_tietokanta.setFocusPolicy(QtCore.Qt.NoFocus)
+		self.nappi_lue_tietokanta.setText("Lue tietokanta")
+		self.nappi_lue_tietokanta.setStyleSheet("background-color: #31363b")
+		self.nappi_lue_tietokanta.clicked.connect(self.lataa_tietokanta)
+
 	def paivita_kuvatiedosto(self):
 		# tavarakuva = f"./Kuvat/Soubi/{self.tavara.id}.png"
 		tavarakuva = self.tavaran_kuvakentta.text()
 		if len(tavarakuva):
-			tavarakuva = "./Kuvat/Soubi/"+self.tavaran_kuvakentta.text()+"{}".format(".png"*(".png" not in tavarakuva))
+			# Jos tavara vedetty tekstikenttään, siinä on koko polku hassulla etujutulla. Siivoa.
+			if "file://" in tavarakuva:
+				tavarakuva = tavarakuva[7:]
+			# Muuten varmaan pelkkä tiedostonimi, .png:llä tai ilman
+			else:
+				tavarakuva = "./Kuvat/Soubi/"+self.tavaran_kuvakentta.text()+"{}".format(".png"*(".png" not in tavarakuva))
 			ikoni = kuva_pixmapiksi(tavarakuva, (TAVARANAPPI[2],TAVARANAPPI[3]))
 			if ikoni is not None:
 				self.tavaranappi.setIcon(ikoni)
@@ -321,7 +369,7 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		'''
 		osa = self.tavaran_osa.value()
 		vastaava_tavara = None
-		for tavara in self.tavarat:
+		for tavara in self.varustetietokanta.varustelista:
 			if tavara.id == osa:
 				vastaava_tavara = tavara
 				break
@@ -415,19 +463,18 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		Päivitä tavaran tiedot syötettyjen tietojen perusteella.
 		'muutettu_kentta' kertoo mitä tietoa pitää päivittää.
 		'''
+		# Pidetään huolta että tavaran laatu on oikea
+		self.vaihdalaatuteksti()
+		if self.tavaran_laatu.isChecked():
+			self.tavara.id |= 0x080
+		else:
+			self.tavara.id &= 0xF7F
 		# Säädä esineen nimi
 		if muutettu_kentta == "Nimi":
 			self.tavara.nimi = self.tavaran_nimi.text()
 		# Säädä esineen tyyppi (miekka vai keihäs vai mikä)
 		elif muutettu_kentta == "Tyyppi":
 			self.tavara.tyyppi = self.tavaran_tyyppi.text()
-		# Säädä esineen laatu
-		elif muutettu_kentta == "Laatu":
-			self.vaihdalaatuteksti()
-			if self.tavaran_laatu.isChecked():
-				self.tavara.id = self.tavara.id | 0x080 # viides bitti ykköseksi
-			else:
-				self.tavara.id = self.tavara.id & 0xF7F # viides bitti nollaksi
 		# Säädä tarvittava leveli
 		elif muutettu_kentta == "Leveli":
 			self.tavara.leveli = self.tavaran_leveli.value()
@@ -443,7 +490,7 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		elif muutettu_kentta == "Osa":
 			osa = self.tavaran_osa.value()
 			vastaava_tavara = None
-			for tavara in self.tavarat:
+			for tavara in self.varustetietokanta.varustelista:
 				if tavara.id == osa:
 					vastaava_tavara = tavara
 					break
@@ -471,17 +518,31 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		Päivitä tarkastustavaran tiedot tarkastuskenttääm
 		(jotta saa luntittua ID:n ymv)
 		'''
+		print("Päivitä tarkastuskenttä")
 		valittu = self.tavaralista.currentIndex()
+		self.tarkistus_tiivis.setText("")
 		if valittu >= 0:
-			self.tarkistus_tavaratiedot.setText(str(self.tavarat[valittu]))
+			self.tarkistus_tavaratiedot.setText(str(self.varustetietokanta.varustelista[valittu]))
+			tavarakuva = "./Kuvat/Varusteet/{:d}.png".format(self.varustetietokanta.varustelista[valittu].id)
+			ikoni = kuva_pixmapiksi(tavarakuva, (TARKISTUSTAVARA[2],TARKISTUSTAVARA[3]))
+			if ikoni is not None:
+				self.tarkistustavara.setIcon(ikoni)
+			else:
+				self.tarkistustavara.setIcon(QtGui.QIcon())
+			tiivisversio, arvot = self.varustetietokanta.varustelista[valittu].dekryptaa_id()
+			self.tarkistus_tiivis.setText(f"{tiivisversio}")
 
 	def lisaa_listaan(self):
 		'''
 		Lisää tavara listaan jos se on validi
 		'''
-		if len(self.tavara.nimi) and self.tavara.id & 0xF00 > 0:
-			self.tavara.korjaa_id(self.tavarat)
-			self.tavarat.append(self.tavara)
+		if len(self.tavara.nimi) and (self.tavara.id & 0xF00) > 0:
+			if self.tavaran_laatu.isChecked():
+				self.tavara.id |= 0x080
+			else:
+				self.tavara.id &= 0xF7F
+			self.tavara.korjaa_id(self.varustetietokanta.varustelista)
+			self.varustetietokanta.lisaa(self.tavara)
 			self.tavaralista.addItem(self.tavara.nimi)
 			# Kopsaa kuva ID:n taakse oikeaan kansioon
 			print(self.tavarakuva)
@@ -491,7 +552,6 @@ class Paaikkuna(QtWidgets.QMainWindow):
 			self.tavara = priluokat.Varuste()
 			self.tavaratiedot.setText(str(self.tavara))
 			self.nollaa_kentat()
-		print(self.tavarat)
 
 	def nollaa_kentat(self):
 		'''
@@ -499,19 +559,36 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		'''
 		self.tavaran_nimi.setText("")
 		self.tavaran_tyyppi.setText("")
-		self.tavaran_laatu.setChecked(True)
-		self.tavara.id = self.tavara.id | 0x080 # tavarabitti ykköseksi
+		# self.tavaran_laatu.setChecked(True)
+		# self.tavara.id = self.tavara.id | 0x080 # tavarabitti ykköseksi
 		self.tavaran_leveli.setValue(0)
 		self.tavaran_alias.setText("")
 		self.tavaran_osa.setValue(0)
 		self.tavaran_osamaara.setValue(0)
 		self.tavaran_osanappi.setText("")
+		self.tavaran_kuvakentta.setText("")
+		self.tavaranappi.setIcon(QtGui.QIcon())
 		self.varinappi_sini.setStyleSheet("background-color: #94d2f8")
 		self.varinappi_pronssi.setStyleSheet("background-color: #e58852")
 		self.varinappi_hopea.setStyleSheet("background-color: #afb7d4")
 		self.varinappi_kulta.setStyleSheet("background-color: #f8f29d")
 		self.varinappi_violetti.setStyleSheet("background-color: #af62e5")
 		self.varinappi_punainen.setStyleSheet("background-color: #e32a45")
+
+	def lataa_tietokanta(self):
+		'''
+		Lataa tietokannan tietokantatiedostosta.
+		'''
+		self.varustetietokanta.lue_tiedostosta("varustetietokanta.json")
+		varustenimet = [a.nimi for a in self.varustetietokanta.varustelista]
+		print(varustenimet)
+		self.tavaralista.clear()
+		print("putsattu")
+		# self.tavaralista.addItems(varustenimet)
+		for nimi in varustenimet:
+			print(nimi)
+			self.tavaralista.addItem(nimi)
+		print("Lisätty")
 
 if __name__ == "__main__":
 	app = QtWidgets.QApplication([])
