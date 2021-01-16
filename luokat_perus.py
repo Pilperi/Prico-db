@@ -144,7 +144,6 @@ class Varuste:
 		'''
 		Antaa varustetiedot JSON-stringinä.
 		'''
-		print([(a[0].id, a[1]) for a in self.tarvitsee if a[0] is not None])
 		dikti = {
 				"Nimi":       self.nimi,
 				"ID":         self.id,
@@ -155,9 +154,7 @@ class Varuste:
 				"Droppaa":    [a.nimi for a in self.droppaa], # pelkkä kartan nimistringi
 				"Aliakset":   self.aliakset
 				}
-		print(dikti)
 		json_str = json.dumps(dikti)
-		print(json_str)
 		return(json_str)
 
 	def lue_diktista(self, dikti):
@@ -194,7 +191,6 @@ class Varuste:
 				else:
 					print(f"Varustetta ID:llä {osanen[0]} ei ole tietokannassa???")
 
-
 class Varustetietokanta:
 	'''
 	Tietokanta olemassaolevista varusteista.
@@ -224,7 +220,7 @@ class Varustetietokanta:
 		'''
 		aikaleima = 0
 		# Juuri tällä hetkellä
-		if aika is "nyt":
+		if aika == "nyt":
 			t = time.localtime()
 			vuosi = "{:04d}".format(t.tm_year)
 			kuu   = "{:02d}".format(t.tm_mon)
@@ -282,10 +278,39 @@ class Varustetietokanta:
 		'''
 		Etsii varustetta sen numeerisella id:llä.
 		'''
+		# Muunna intiksi jos tarve
+		if type(id) is not int:
+			try:
+				id = int(id)
+			except ValueError:
+				return(None)
+		# Käy varustelistaa läpi kunnes id tulee vastaan
 		for varuste in self.varustelista:
 			if varuste.id == id:
 				return(varuste)
+		# Jos ei tullut vastaan, anna None
 		return(None)
+
+	def filtteroi(self, hakukriteerit):
+		'''
+		Anna filtteröity versio tietokannasta,
+		annetun diktin perusteella
+		esim. "Vain violetit keihäät" tmv.
+		'''
+		filtteroity = []
+		vari_ok = False
+		for varuste in self.varustelista:
+			vari_ok   = False
+			tyyppi_ok = False
+			# Tavaran väri (sininen, pronssinen tmv)
+			if hakukriteerit.get("Väri") is None or varuste.dekryptaa_id()[1][0] in hakukriteerit.get("Väri"):
+				vari_ok = True
+			# Tavaran tyyppi (keihäs, miekka  tmv)
+			if hakukriteerit.get("Tyyppi") is None or varuste.tyyppi in hakukriteerit.get("Tyyppi"):
+				tyyppi_ok = True
+			if vari_ok and tyyppi_ok:
+				filtteroity.append(varuste)
+		return(filtteroity)
 
 	def etsi_kartan_varusteet(self, kartannimi):
 		'''
@@ -303,14 +328,9 @@ class Varustetietokanta:
 		kirjatuista varusteista.
 		'''
 		st = f"{{\n\"Aikaleima\":{self.aikaleima},\n\"Varusteet\": ["
-		print(st)
-		print(self.varustelista)
 		for v,varuste in enumerate(self.varustelista):
-			print(v)
 			st += "\n  {:s}{:s}".format(varuste.jsoniksi(), ","*(v<(len(self.varustelista)-1)))
-			print(st)
 		st += "\n]\n}\n"
-		print(st)
 		return(st)
 
 	def lue_stringista(self, stringi):
@@ -323,7 +343,6 @@ class Varustetietokanta:
 		if type(dikti.get("Varusteet")) is list:
 			varusteet = []
 			for varustedikti in dikti.get("Varusteet"):
-				print(varustedikti)
 				varuste = Varuste(dikti=varustedikti)
 				varusteet.append(varuste)
 			self.varustelista = varusteet
@@ -347,7 +366,7 @@ class Varustetietokanta:
 		'''
 		print("Lue tiedostosta")
 		if os.path.exists(tiedostopolku):
-			print(f"Luetaan tietokanta tiedostosta {tiedostopolku}")
+			print(f"Luetaan varustetietokanta tiedostosta {tiedostopolku}")
 			tiedosto = open(tiedostopolku, "r")
 			st = ""
 			for rivi in tiedosto.readlines():
@@ -360,7 +379,7 @@ class Varustetietokanta:
 
 class Kartta:
 	"""Luokka kartan dropeille"""
-	def __init__(self, tyyppi="Normaali", maailma=0, kartta=0, droppaa=None):
+	def __init__(self, tyyppi="Normaali", maailma=0, kartta=0, droppaa=None, dikti=None, varustetietokanta=None):
 		# Missä maailma sijaitsee
 		self.tyyppi = tyyppi # Normaali, Hardi, Try hardi, muu???
 		self.maailma = 0
@@ -374,6 +393,9 @@ class Kartta:
 		self.droppaa = []
 		if type(droppaa) is list and all([type(a) is Varuste for a in droppaa]):
 			self.droppaa = droppaa
+		# Lue arvot diktistä
+		if type(dikti) is dict:
+			self.lue_diktista(dikti, varustetietokanta)
 
 	def __add__(self, varuste):
 		'''
@@ -388,3 +410,144 @@ class Kartta:
 		'''
 		if varuste in self.droppaa:
 			self.droppaa.remove(varuste)
+
+	def __str__(self):
+		'''
+		JSON-stringi itsestä.
+		'''
+		st = ""
+		varustelista = [varuste.id for varuste in self.droppaa if type(varuste) is Varuste]   # varusteista id
+		varustelista += [varuste for varuste in self.droppaa if type(varuste) is not Varuste] # muut sellaisenaan
+		dikti = {
+                "Tyyppi":  self.tyyppi,
+                "Nimi":    self.nimi,
+                "Droppaa": varustelista
+                }
+		st += json.dumps(dikti)
+		return(st)
+
+	def lue_diktista(self, dikti, varustetietokanta):
+		'''
+		Lue arvot kenttiin diktistä.
+		'''
+		if type(dikti.get("Tyyppi")) is str:
+			self.tyyppi = dikti.get("Tyyppi")
+		if type(dikti.get("Nimi")) is str:
+			self.nimi = dikti.get("Nimi")
+			self.maailma = int(self.nimi.split("-")[0])
+			self.kartta  = int(self.nimi.split("-")[1])
+		if type(dikti.get("Droppaa")) is list:
+			for varuste in dikti.get("Droppaa"):
+				# Valmiiksi varuste
+				if type(varuste) is Varuste:
+					self.droppaa.append(varuste)
+				# Hae ID:llä varustetietokannasta
+				elif type(varustetietokanta) is Varustetietokanta:
+					varustepointteri = varustetietokanta.etsi_varusteid(varuste)
+					if varustepointteri is not None:
+						self.droppaa.append(varustepointteri)
+				# Laita sellaisenaan jos ei muuta keksitä
+				else:
+					self.droppaa.append(varuste)
+
+class Karttatietokanta:
+	'''Luokka karttakokoelmalle'''
+	def __init__(self, karttalista=None, aikaleima=None, stringi=None):
+		self.karttalista = [] # lista Karttoja
+		if type(karttalista) is list and all([type(a) is Kartta for a in karttalista]):
+			self.karttalista = karttalista
+		# Tietokannan aikaleima
+		self.aikaleima = 0
+		if type(aikaleima) is int:
+			self.aikaleima = aikaleima
+		elif type(aikaleima) is str:
+			self.aikaleima = self.hanki_aikaleima(aikaleima)
+		# Jos aikaleima on tässä kohtaa nolla, kelvollista ei ole annettu.
+		# Käytetään nykyhetkeä.
+		if not self.aikaleima:
+			self.aikaleima = self.hanki_aikaleima("nyt")
+		# Lue arvot JSON-stringistä
+		if type(stringi) is str:
+			self.lue_stringista(stringi)
+
+	def __str__(self):
+		'''
+		JSON-stringi itsestä, ml. katetut kartat.
+		'''
+		st = ""
+		dikti = {"Aikaleima": self.hanki_aikaleima(),
+                 "Kartat": [str(kartta) for kartta in self.karttalista]}
+		st += json.dumps(dikti)
+		return(st)
+
+	def hanki_aikaleima(self, aika="nyt"):
+		'''
+		Hankkii kokonaislukumuotoisen aikaleiman,
+		jolla seurata kuinka tuoreesta tietokannasta on kyse.
+		'''
+		aikaleima = 0
+		# Juuri tällä hetkellä
+		if aika == "nyt":
+			t = time.localtime()
+			vuosi = "{:04d}".format(t.tm_year)
+			kuu   = "{:02d}".format(t.tm_mon)
+			paiv  = "{:02d}".format(t.tm_mday)
+			tunti = "{:02d}".format(t.tm_hour)
+			minu  = "{:02d}".format(t.tm_min)
+			aikaleima = int(f"{vuosi}{kuu}{paiv}{tunti}{minu}")
+		# str yyyy-mm-dd-mi
+		else:
+			splitattuaika = aika.split("-")
+			if len(splitattuaika) > 4 and all([all([a.isnumeric() for a in b] for b in splitattuaika[:5])]):
+				vuosi = "{:04d}".format(int(splitattuaika[0]))
+				kuu   = "{:02d}".format(int(splitattuaika[1]))
+				paiv  = "{:02d}".format(int(splitattuaika[2]))
+				tunti = "{:02d}".format(int(splitattuaika[3]))
+				minu  = "{:02d}".format(int(splitattuaika[4]))
+				aikaleima = int(f"{vuosi}{kuu}{paiv}{tunti}{minu}")
+		return(aikaleima)
+
+	def lue_stringista(self, stringi, varustetietokanta):
+		'''
+		Lue tietokanta stringistä.
+		'''
+		dikti = {}
+		try:
+			dikti = json.loads(stringi)
+		except json.JSONDecodeError as err:
+			print(err)
+		if type(dikti.get("Aikaleima")) is int:
+			self.aikaleima = dikti.get("Aikaleima")
+		if type(dikti.get("Kartat")) is list:
+			kartat = []
+			for karttadikti in dikti.get("Kartat"):
+				kartta = Kartta(dikti=karttadikti, varustetietokanta=varustetietokanta)
+				kartat.append(kartta)
+			self.karttalista = kartat
+
+	def tallenna(self, tiedostopolku):
+		'''
+		Tallenna tietokanta tiedostoon.
+		'''
+		print("Tallennetaan varustetietokanta ({} karttaa)".format(len(self.karttalista)))
+		tiedosto = open(tiedostopolku, "w+")
+		tiedosto.write(str(self))
+		tiedosto.close()
+		print(f"Tallennettu tiedostoon {tiedostopolku}")
+
+	def lue_tiedostosta(self, tiedostopolku):
+		'''
+		Lue tietokanta tiedostosta.
+		'''
+		print("Lue tiedostosta")
+		if os.path.exists(tiedostopolku):
+			print(f"Luetaan karttatietokanta tiedostosta {tiedostopolku}")
+			tiedosto = open(tiedostopolku, "r")
+			st = ""
+			for rivi in tiedosto.readlines():
+				st += rivi
+			tiedosto.close()
+			self.lue_stringista(st)
+			print("Luettu {:d} karttaa.".format(len(self.karttalista)))
+		else:
+			print(f"Tiedostoa {tiedostopolku} ei ole olemassa...")
