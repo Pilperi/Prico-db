@@ -154,9 +154,14 @@ class Varuste:
 				"Leveli":     self.leveli,
 				"Tarvitsee":  [(a[0].id, a[1]) for a in self.tarvitsee if a[0] is not None], # pelkät ID:t, koska uniikkeja
 				"Varastossa": self.varastossa,
-				"Droppaa":    [a.nimi for a in self.droppaa], # pelkkä kartan nimistringi
+				"Droppaa":    [], # pelkät nimistringit
 				"Aliakset":   self.aliakset
 				}
+		for kartta in self.droppaa:
+			if type(kartta) is Kartta:
+				dikti["Droppaa"].append(kartta.nimi)
+			else:
+				dikti["Droppaa"].append(kartta)
 		json_str = json.dumps(dikti)
 		return(json_str)
 
