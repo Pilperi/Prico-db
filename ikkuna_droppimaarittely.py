@@ -89,7 +89,7 @@ def tavara_napiksi(tavara, funktio):
 		#  Laita kuva
 		tavaran_kuva = f"./Kuvat/Varusteet/{tavara.id}.png"
 		ikoni = kuva_pixmapiksi(tavaran_kuva, (GRIDITAVARA[0], GRIDITAVARA[1]))
-		nappi.setStyleSheet("QPushButton:active {border: 0px solid;}")
+		nappi.setStyleSheet("QPushButton:active {border: 1px solid;}")
 	if ikoni is not None:
 		nappi.setIcon(ikoni)
 	else:
