@@ -9,7 +9,7 @@ import luokat_perus as priluokat
 from PIL import Image, ImageQt
 from PyQt5 import Qt, QtCore, QtWidgets, QtGui
 
-IKKUNAMITAT = (1000,500)
+IKKUNAMITAT = (700,500)
 MARGINAALIT = (10,10)
 
 LISTALABEL      = (MARGINAALIT[0], MARGINAALIT[1], 200, 50)
@@ -42,6 +42,13 @@ NAPPI_HARPAKE   = (NAPPI_PANSSARI[0]+NAPPI_PANSSARI[2], NAPPI_PANSSARI[1], NAPPI
 NAPPI_HATTU     = (NAPPI_KILPI[0], NAPPI_KILPI[1]+NAPPI_KILPI[3], NAPPI_MIEKKA[2], NAPPI_MIEKKA[3])
 NAPPI_JALKINE   = (NAPPI_HATTU[0]+NAPPI_HATTU[2], NAPPI_HATTU[1], NAPPI_MIEKKA[2], NAPPI_MIEKKA[3])
 
+LABERL_KARTTA   = (FILTTERILABEL[0]+FILTTERILABEL[2], FILTTERILABEL[1], 270, 50)
+KARTTAKENTTA    = (LABERL_KARTTA[0], LABERL_KARTTA[1]+LABERL_KARTTA[3], LABERL_KARTTA[2]-50, LABERL_KARTTA[3])
+NAPPI_KARTTA    = (KARTTAKENTTA[0]+KARTTAKENTTA[2], KARTTAKENTTA[1], LABERL_KARTTA[2]-KARTTAKENTTA[2], KARTTAKENTTA[3])
+TAVARAGRID      = (KARTTAKENTTA[0], KARTTAKENTTA[1]+KARTTAKENTTA[3], LABERL_KARTTA[2], 270)
+GRIDITAVARA     = (50, 50)
+
+
 def kuva_pixmapiksi(tiedostopolku, mitat):
 	'''
 	Muuttaa tiedostopolun takana olevan kuvan sellaiseksi että
@@ -66,10 +73,68 @@ def kuva_pixmapiksi(tiedostopolku, mitat):
 		return(icon)
 	return(None)
 
+def tavara_napiksi(tavara, funktio):
+	'''
+	Antaa tavaraa vastaavan QPushButton-olion,
+	jossa tavaran kuva. Nappi kytketään annettuun
+	funktioon niin, että se laittaa sisääntuloargumentiksi
+	itse tavaran.
+	'''
+	nappi = QtWidgets.QPushButton()
+	nappi.setIconSize(QtCore.QSize(GRIDITAVARA[0], GRIDITAVARA[1]))
+	nappi.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+	nappi.setFocusPolicy(QtCore.Qt.NoFocus)
+	ikoni = None
+	if type(tavara) is priluokat.Varuste:
+		#  Laita kuva
+		tavaran_kuva = f"./Kuvat/Varusteet/{tavara.id}.png"
+		ikoni = kuva_pixmapiksi(tavaran_kuva, (GRIDITAVARA[0], GRIDITAVARA[1]))
+		nappi.setStyleSheet("QPushButton:active {border: 0px solid;}")
+	if ikoni is not None:
+		nappi.setIcon(ikoni)
+	else:
+		nappi.setIcon(QtGui.QIcon())
+	nappi.clicked.connect(lambda t: funktio(tavara)) # kytketään annettuun funktioon 
+	return(nappi)
+
+class Tavaragridi(QtWidgets.QWidget):
+	'''
+	Tavarat gridinä.
+	'''
+	def __init__(self, parent, sijainti, tavarat, funktio):
+		'''
+		Gridi läimäistään pääikkunaan "parent" sijainnille "sijainti",
+		siihen laitetaan tavarapainikkeet kuvaamaan tavaroita "tavarat"
+		ja kukin nappi kytketään funktioon "funktio" niin että
+		se syöttää siihen kyseisen Varuste-olion.
+		'''
+		super().__init__(parent=parent)
+		self.grid = Qt.QGridLayout()
+		# self.grid.setHorizontalSpacing(5)
+		# self.grid.setVerticalSpacing(5)
+		self.grid.setSpacing(5)
+		varusteindeksi = 0
+		for i in range(5):
+			for j in range(5):
+				if varusteindeksi < len(tavarat):
+					# print(f"{varusteindeksi}/{len(tavarat)}: kuva")
+					nappi = tavara_napiksi(tavarat[varusteindeksi], funktio)
+				else:
+					# print(f"{varusteindeksi}/{len(tavarat)}: tyhjä")
+					nappi = tavara_napiksi(None, funktio)
+				if varusteindeksi == len(tavarat):
+					# print(f"{varusteindeksi}/{len(tavarat)}: plussa")
+					nappi.setText("+")
+				self.grid.addWidget(nappi, i, j)
+				varusteindeksi += 1
+		self.setGeometry(QtCore.QRect(*sijainti))
+		self.setLayout(self.grid)
+		self.show()
+
 class Paaikkuna(QtWidgets.QMainWindow):
 	def __init__(self):
 		super().__init__()
-		self.setWindowTitle("Tavaraselain")
+		self.setWindowTitle("Lisää tavaroita karttoihin")
 		self.resize(IKKUNAMITAT[0], IKKUNAMITAT[1])
 		self.setMinimumSize(IKKUNAMITAT[0], IKKUNAMITAT[1])
 		self.setMaximumSize(IKKUNAMITAT[0], IKKUNAMITAT[1])
@@ -100,7 +165,7 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.tarkistus_tavaratiedot.setStyleSheet("background-color: #31363b")
 
 		# Filtteröintiosiot
-		self.filtterit = {"Väri": None, "Tyyppi": None}
+		self.filtterit = {"Väri": None, "Tyyppi": None, "Vaindropit": True}
 		# Filtteröi värin perusteella
 		self.varistatukset = {"Sininen": True,
 		                      "Pronssi": True,
@@ -108,6 +173,7 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		                      "Kulta":   True,
 		                      "Violetti":True,
 		                      "Punainen":True}
+		# Tavaroiden värit
 		if True:
 			# Tavaran väri: label
 			self.label_filtteri = QtWidgets.QLabel(self)
@@ -228,44 +294,119 @@ class Paaikkuna(QtWidgets.QMainWindow):
 			self.nappi_harpake.setText("Härpäke")
 			self.nappi_harpake.clicked.connect(lambda t: self.nappia_painettu("Härpäke"))
 
-
 		# Esikatseltava tavara
 		self.tavara = priluokat.Varuste()
 		self.varustetietokanta = priluokat.Varustetietokanta()
-		self.lataa_tietokanta()
-
+		self.varustetietokanta.lue_tiedostosta("varustetietokanta.json")
+		self.filtteroidyt_tavarat = self.varustetietokanta.varustelista
+		self.paivita_varustelista()
+		self.paivita_tarkastuskentta()
+		self.tavaragridi = Tavaragridi(self, TAVARAGRID, [], self.tiedot_kartan_varusteesta)
 		# Näytä tavaran tiedot pikku ruudussa
 		self.tavaralista.currentIndexChanged.connect(self.paivita_tarkastuskentta)
 
-	def lataa_tietokanta(self):
+		# Kartat
+		self.karttatietokanta = priluokat.Karttatietokanta()
+		self.karttatietokanta.lue_tiedostosta("karttatietokanta.json", self.varustetietokanta)
+		self.kartta = priluokat.Kartta()
+
+		# Karttamuokkauksen laabeli
+		self.label_tavaralista = QtWidgets.QLabel(self)
+		self.label_tavaralista.setGeometry(QtCore.QRect(*LABERL_KARTTA))
+		self.label_tavaralista.setText("Kartan nimi (esim. 18-3)")
+		# Kartan syöttökenttä
+		self.karttakentta = QtWidgets.QLineEdit(self)
+		self.karttakentta.setGeometry(QtCore.QRect(*KARTTAKENTTA))
+		self.karttakentta.textChanged.connect(self.etsi_kartan_tiedot)
+		# Nappi lisääpoista kartta
+		self.nappi_kartta = QtWidgets.QPushButton(self)
+		self.nappi_kartta.setGeometry(QtCore.QRect(*NAPPI_KARTTA))
+		self.nappi_kartta.setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
+		self.nappi_kartta.setFocusPolicy(QtCore.Qt.NoFocus)
+		self.nappi_kartta.clicked.connect(self.lisaapoista_kartta)
+
+	def etsi_kartan_tiedot(self):
 		'''
-		Lataa tietokannan tietokantatiedostosta.
+		Etsi kartta karttatietokannasta ja päivitä
+		tiedot relevantteihin kenttiin.
 		'''
-		print(f"Lataa tietokanta")
-		self.varustetietokanta.lue_tiedostosta("varustetietokanta.json")
-		varustenimet = [a.nimi for a in self.varustetietokanta.varustelista]
+		self.kartta = priluokat.Kartta()
+		self.karttakentta.setStyleSheet("background-color: salmon; color: black")
+		kartan_nimi = "Normaali-"+self.karttakentta.text()
+		print(f"Etsi kartta {kartan_nimi}")
+		# Etsi nimeä vastaava kartta karttatietokannasta
+		kartta = None
+		# print([k.nimi for k in self.karttatietokanta.karttalista])
+		for karttaehdokas in self.karttatietokanta.karttalista:
+			if karttaehdokas.nimi == kartan_nimi:
+				print(f"Mätsi")
+				self.nappi_kartta.setText("-")
+				self.nappi_kartta.setStyleSheet("background-color: salmon; color: black")
+				kartta = karttaehdokas
+				break
+		# Kartta löytyi
+		if kartta is not None:
+			print("Löytyi")
+			self.kartta = kartta
+			self.karttakentta.setStyleSheet("background-color: #6bff84; color: black")
+		else:
+			print("Ei löytynyt")
+			self.nappi_kartta.setText("+")
+			self.nappi_kartta.setStyleSheet("background-color: #6bff84; color: black")
+		self.tavaragridi.hide()
+		self.tavaragridi = Tavaragridi(self, TAVARAGRID, self.kartta.droppaa, self.tiedot_kartan_varusteesta)
+
+	def lisaapoista_kartta(self):
+		'''
+		Lisää kartta tietokantaan tai poista kartta tietokannasta.
+		'''
+		# Käy tietokanta läpi ja yritä poistaa kartta sieltä
+		if self.nappi_kartta.text() == "-":
+			for k,kartta in enumerate(self.karttatietokanta.karttalista):
+				if kartta.nimi == self.kartta.nimi:
+					print(f"Poista {kartta.nimi} karttatietokannasta")
+					self.karttatietokanta.karttalista.pop(k)
+					self.karttakentta.setStyleSheet("background-color: salmon; color: black")
+					self.nappi_kartta.setStyleSheet("background-color: #6bff84; color: black")
+					self.nappi_kartta.setText("+")
+					self.kartta = priluokat.Kartta()
+					self.tavaragridi.hide()
+					self.tavaragridi = Tavaragridi(self, TAVARAGRID, self.kartta.droppaa, self.tiedot_kartan_varusteesta)
+					break
+		# Jos karttaa ei poistettu, se varmaan pitää lisätä uutena tietokantaanm
+		else:
+			print(f"Lisää karttatietokantaan")
+			kartan_osat = self.karttakentta.text().split("-")
+			if len(kartan_osat) == 2:
+				try:
+					maailma = int(kartan_osat[0])
+					kartta  = int(kartan_osat[1])
+					self.kartta = priluokat.Kartta(maailma=maailma, kartta=kartta)
+					print(f"Lisää {self.kartta.nimi} tietokantaan")
+					self.karttatietokanta.karttalista.append(self.kartta)
+					self.karttakentta.setStyleSheet("background-color: #6bff84; color: black")
+					self.nappi_kartta.setStyleSheet("background-color: salmon; color: black")
+					self.nappi_kartta.setText("-")
+				except ValueError:
+					print("Kartan nimi on huono")
+			else:
+				print("Kartan nimi on huono")
+
+	def filtteroi_tietokanta(self):
+		'''
+		Filtteröi tietokanta annettujen hakukriteereiden perusteella.
+		'''
+		self.filtteroidyt_tavarat = self.varustetietokanta.filtteroi(self.filtterit)
+		self.paivita_varustelista()
+
+	def paivita_varustelista(self):
+		varustenimet = [a.nimi for a in self.filtteroidyt_tavarat]
 		self.tavaralista.clear()
 		print("putsattu")
 		for nimi in varustenimet:
-			print(nimi)
+			# print(nimi)
 			self.tavaralista.addItem(nimi)
 		print("Lisätty")
-
-	def paivita_kuvatiedosto(self):
-		print(f"Päivitä kuvatiedosto")
-		# tavarakuva = f"./Kuvat/Soubi/{self.tavara.id}.png"
-		tavarakuva = self.tavaran_kuvakentta.text()
-		if len(tavarakuva):
-			# Jos tavara vedetty tekstikenttään, siinä on koko polku hassulla etujutulla. Siivoa.
-			if "file://" in tavarakuva:
-				tavarakuva = tavarakuva[7:]
-			# Muuten varmaan pelkkä tiedostonimi, .png:llä tai ilman
-			else:
-				tavarakuva = "./Kuvat/Soubi/"+self.tavaran_kuvakentta.text()+"{}".format(".png"*(".png" not in tavarakuva))
-			ikoni = kuva_pixmapiksi(tavarakuva, (TAVARANAPPI[2],TAVARANAPPI[3]))
-			if ikoni is not None:
-				self.tavaranappi.setIcon(ikoni)
-			self.tavarakuva = tavarakuva
 
 	def paivita_tarkastuskentta(self):
 		'''
@@ -275,9 +416,9 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		print("Päivitä tarkastuskenttä")
 		valittu = self.tavaralista.currentIndex()
 		if valittu >= 0:
-			self.tavara = self.varustetietokanta.varustelista[valittu]
-			self.tarkistus_tavaratiedot.setText(str(self.varustetietokanta.varustelista[valittu]))
-			tavarakuva = "./Kuvat/Varusteet/{:d}.png".format(self.varustetietokanta.varustelista[valittu].id)
+			self.tavara = self.filtteroidyt_tavarat[valittu]
+			self.tarkistus_tavaratiedot.setText(str(self.filtteroidyt_tavarat[valittu]))
+			tavarakuva = "./Kuvat/Varusteet/{:d}.png".format(self.filtteroidyt_tavarat[valittu].id)
 			ikoni = kuva_pixmapiksi(tavarakuva, (TARKISTUSTAVARA[2],TARKISTUSTAVARA[3]))
 			if ikoni is not None:
 				self.tarkistustavara.setIcon(ikoni)
@@ -326,10 +467,74 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		if self.varistatukset["Punainen"]:
 			self.filtterit["Väri"].append(priluokat.PUNAINEN)
 			self.varinappi_punainen.setStyleSheet("background-color: #e32a45")
-		print(self.varistatukset)
+		# Filtteröi tavarat
+		self.filtteroi_tietokanta()
 
 	def nappia_painettu(self, tyyppi):
-		pass
+		'''
+		Tavaran tyyppikriteeriä päivitetty.
+		'''
+		# Lisää/poista tyyppi sallittujen listasta
+		if self.filtterit["Tyyppi"] is None:
+			self.filtterit["Tyyppi"] = []
+		if tyyppi not in self.filtterit["Tyyppi"]:
+			self.filtterit["Tyyppi"].append(tyyppi)
+		else:
+			self.filtterit["Tyyppi"].remove(tyyppi)
+		# Päivitä nappien värit
+				# Kaikki napit harmaiksi
+		self.nappi_miekka.setStyleSheet("background-color: #31363b")
+		self.nappi_keihas.setStyleSheet("background-color: #31363b")
+		self.nappi_kirves.setStyleSheet("background-color: #31363b")
+		# ----------------------------------------------------------
+		self.nappi_nyrkki.setStyleSheet("background-color: #31363b")
+		self.nappi_jousi.setStyleSheet("background-color: #31363b")
+		self.nappi_sauva.setStyleSheet("background-color: #31363b")
+		# ----------------------------------------------------------
+		self.nappi_kilpi.setStyleSheet("background-color: #31363b")
+		self.nappi_panssari.setStyleSheet("background-color: #31363b")
+		self.nappi_hattu.setStyleSheet("background-color: #31363b")
+		# ----------------------------------------------------------
+		self.nappi_jalkine.setStyleSheet("background-color: #31363b")
+		self.nappi_harpake.setStyleSheet("background-color: #31363b")
+		
+		if "Miekka" in self.filtterit["Tyyppi"]:
+			self.nappi_miekka.setStyleSheet("background-color: #6bff84; color: black")
+		if "Keihäs" in self.filtterit["Tyyppi"]:
+			self.nappi_keihas.setStyleSheet("background-color: #6bff84; color: black")
+		if "Kirves" in self.filtterit["Tyyppi"]:
+			self.nappi_kirves.setStyleSheet("background-color: #6bff84; color: black")
+		if "Nyrkki" in self.filtterit["Tyyppi"]:
+			self.nappi_nyrkki.setStyleSheet("background-color: #6bff84; color: black")
+		if "Jousi" in self.filtterit["Tyyppi"]:
+			self.nappi_jousi.setStyleSheet("background-color: #6bff84; color: black")
+		if "Taikasauva" in self.filtterit["Tyyppi"]:
+			self.nappi_sauva.setStyleSheet("background-color: #6bff84; color: black")
+		if "Kilpi" in self.filtterit["Tyyppi"]:
+			self.nappi_kilpi.setStyleSheet("background-color: #6bff84; color: black")
+		if "Panssari" in self.filtterit["Tyyppi"]:
+			self.nappi_panssari.setStyleSheet("background-color: #6bff84; color: black")
+		if "Päähine" in self.filtterit["Tyyppi"]:
+			self.nappi_hattu.setStyleSheet("background-color: #6bff84; color: black")
+		if "Jalkine" in self.filtterit["Tyyppi"]:
+			self.nappi_jalkine.setStyleSheet("background-color: #6bff84; color: black")
+		if "Härpäke" in self.filtterit["Tyyppi"]:
+			self.nappi_harpake.setStyleSheet("background-color: #6bff84; color: black")
+		# Filtteröi tavarat
+		self.filtteroi_tietokanta()
+
+	def tiedot_kartan_varusteesta(self, varuste):
+		if type(varuste) is priluokat.Varuste and varuste in self.kartta.droppaa:
+			print(f"Poista {varuste.nimi} kartan {self.kartta.nimi} dropeista")
+			self.kartta.droppaa.remove(varuste)
+		else:
+			print(f"Lisää {self.tavara.nimi} kartan {self.kartta.nimi} droppeihin")
+			if self.tavara not in self.kartta.droppaa:
+				self.kartta.droppaa.append(self.tavara)
+				self.tavara.droppaa.append(self.kartta)
+		self.etsi_kartan_tiedot()
+		self.karttatietokanta.tallenna("karttatietokanta.json")
+		self.varustetietokanta.tallenna("varustetietokanta.json")
 
 if __name__ == "__main__":
 	app = QtWidgets.QApplication([])

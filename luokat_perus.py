@@ -132,7 +132,10 @@ class Varuste:
 		st += f"Varastossa: {self.varastossa}\n"
 		st += "Droppaa:"
 		for k,kartta in enumerate(self.droppaa):
-				st += "  {}{}".format("\n            "*bool(k), kartta.nimi)
+				if type(kartta) is Kartta:
+					st += "  {}{}".format("\n            "*bool(k), kartta.nimi)
+				elif type(kartta) is str:
+					st += "  {}{}".format("\n            "*bool(k), kartta)
 		st += "\n"
 		st += "Lempinimet:"
 		for n,nimi in enumerate(self.aliakset):
@@ -297,6 +300,7 @@ class Varustetietokanta:
 		annetun diktin perusteella
 		esim. "Vain violetit keihäät" tmv.
 		'''
+		print("Filtteröi")
 		filtteroity = []
 		vari_ok = False
 		for varuste in self.varustelista:
@@ -308,8 +312,13 @@ class Varustetietokanta:
 			# Tavaran tyyppi (keihäs, miekka  tmv)
 			if hakukriteerit.get("Tyyppi") is None or varuste.tyyppi in hakukriteerit.get("Tyyppi"):
 				tyyppi_ok = True
-			if vari_ok and tyyppi_ok:
+			droppistatus_ok = True
+			if hakukriteerit.get("Vaindropit") and len(varuste.tarvitsee) and (None, 0) not in varuste.tarvitsee:
+				print(f"{varuste.nimi} on aliosasia, ei kelpaa")
+				droppistatus_ok = False
+			if vari_ok and tyyppi_ok and droppistatus_ok:
 				filtteroity.append(varuste)
+		print(f"{len(filtteroity)}")
 		return(filtteroity)
 
 	def etsi_kartan_varusteet(self, kartannimi):
@@ -396,6 +405,8 @@ class Kartta:
 		# Lue arvot diktistä
 		if type(dikti) is dict:
 			self.lue_diktista(dikti, varustetietokanta)
+		else:
+			print(f"Annettu dikti on tyyppiä {type(dikti)}")
 
 	def __add__(self, varuste):
 		'''
@@ -419,7 +430,6 @@ class Kartta:
 		varustelista = [varuste.id for varuste in self.droppaa if type(varuste) is Varuste]   # varusteista id
 		varustelista += [varuste for varuste in self.droppaa if type(varuste) is not Varuste] # muut sellaisenaan
 		dikti = {
-                "Tyyppi":  self.tyyppi,
                 "Nimi":    self.nimi,
                 "Droppaa": varustelista
                 }
@@ -430,12 +440,16 @@ class Kartta:
 		'''
 		Lue arvot kenttiin diktistä.
 		'''
-		if type(dikti.get("Tyyppi")) is str:
-			self.tyyppi = dikti.get("Tyyppi")
+		# print([type(dikti.get(a)) for a in dikti])
 		if type(dikti.get("Nimi")) is str:
 			self.nimi = dikti.get("Nimi")
-			self.maailma = int(self.nimi.split("-")[0])
-			self.kartta  = int(self.nimi.split("-")[1])
+			print(f"Ladattu nimi: {self.nimi}")
+			self.tyyppi = self.nimi.split("-")[0]
+			print(f"Ladattu tyyppi: {self.tyyppi}")
+			self.maailma = int(self.nimi.split("-")[1])
+			print(f"Ladattu maailma: {self.maailma}")
+			self.kartta  = int(self.nimi.split("-")[2])
+			print(f"Ladattu kartta: {self.kartta}")
 		if type(dikti.get("Droppaa")) is list:
 			for varuste in dikti.get("Droppaa"):
 				# Valmiiksi varuste
@@ -521,7 +535,7 @@ class Karttatietokanta:
 		if type(dikti.get("Kartat")) is list:
 			kartat = []
 			for karttadikti in dikti.get("Kartat"):
-				kartta = Kartta(dikti=karttadikti, varustetietokanta=varustetietokanta)
+				kartta = Kartta(dikti=json.loads(karttadikti), varustetietokanta=varustetietokanta)
 				kartat.append(kartta)
 			self.karttalista = kartat
 
@@ -535,7 +549,7 @@ class Karttatietokanta:
 		tiedosto.close()
 		print(f"Tallennettu tiedostoon {tiedostopolku}")
 
-	def lue_tiedostosta(self, tiedostopolku):
+	def lue_tiedostosta(self, tiedostopolku, varustetietokanta):
 		'''
 		Lue tietokanta tiedostosta.
 		'''
@@ -547,7 +561,17 @@ class Karttatietokanta:
 			for rivi in tiedosto.readlines():
 				st += rivi
 			tiedosto.close()
-			self.lue_stringista(st)
+			self.lue_stringista(st, varustetietokanta)
 			print("Luettu {:d} karttaa.".format(len(self.karttalista)))
+			# print([type(a) for a in self.karttalista])
 		else:
 			print(f"Tiedostoa {tiedostopolku} ei ole olemassa...")
+
+	def etsi_kartta(self, kartannimi):
+		'''
+		Etsi kartta sen nimen perusteella, esim. "Normaali-18-3"
+		'''
+		for kartta in self.karttalista:
+			if kartannimi == kartta.nimi:
+				return(kartta)
+		return(None)
