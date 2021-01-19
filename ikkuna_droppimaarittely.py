@@ -49,7 +49,7 @@ TAVARAGRID      = (KARTTAKENTTA[0], KARTTAKENTTA[1]+KARTTAKENTTA[3], LABERL_KART
 GRIDITAVARA     = (50, 50)
 
 
-def kuva_pixmapiksi(tiedostopolku, mitat):
+def kuva_pixmapiksi(tiedostopolku, mitat, resize=True):
 	'''
 	Muuttaa tiedostopolun takana olevan kuvan sellaiseksi että
 	se on annettujen mittojen kokoinen ja sen voi laittaa qt-ikoniksi.
@@ -65,11 +65,14 @@ def kuva_pixmapiksi(tiedostopolku, mitat):
 		None virheessä, onnistuessa QIcon jonka voi laittaa esim. nappiin
 	'''
 	if os.path.exists(tiedostopolku) and type(mitat) in [list,tuple] and all([type(a) is int for a in mitat]):
-		kuva = Image.open(tiedostopolku)
-		kuva = kuva.resize((mitat[0], mitat[1]))
-		img = ImageQt.ImageQt(kuva)
-		pixmap = QtGui.QPixmap.fromImage(img)
-		icon = QtGui.QIcon(pixmap)
+		if resize:
+			kuva = Image.open(tiedostopolku)
+			kuva = kuva.resize((mitat[0], mitat[1]))
+			img = ImageQt.ImageQt(kuva)
+			pixmap = QtGui.QPixmap.fromImage(img)
+			icon = QtGui.QIcon(pixmap)
+		else:
+			icon = QtGui.QIcon(tiedostopolku)
 		return(icon)
 	return(None)
 
@@ -88,7 +91,7 @@ def tavara_napiksi(tavara, funktio):
 	if type(tavara) is priluokat.Varuste:
 		#  Laita kuva
 		tavaran_kuva = f"./Kuvat/Varusteet/{tavara.id}.png"
-		ikoni = kuva_pixmapiksi(tavaran_kuva, (GRIDITAVARA[0], GRIDITAVARA[1]))
+		ikoni = kuva_pixmapiksi(tavaran_kuva, (GRIDITAVARA[0], GRIDITAVARA[1]), resize=False)
 		nappi.setStyleSheet("QPushButton:active {border: 1px solid;}")
 	if ikoni is not None:
 		nappi.setIcon(ikoni)
