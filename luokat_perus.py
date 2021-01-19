@@ -319,11 +319,9 @@ class Varustetietokanta:
 				tyyppi_ok = True
 			droppistatus_ok = True
 			if hakukriteerit.get("Vaindropit") and len(varuste.tarvitsee) and (None, 0) not in varuste.tarvitsee:
-				print(f"{varuste.nimi} on aliosasia, ei kelpaa")
 				droppistatus_ok = False
 			if vari_ok and tyyppi_ok and droppistatus_ok:
 				filtteroity.append(varuste)
-		print(f"{len(filtteroity)}")
 		return(filtteroity)
 
 	def etsi_kartan_varusteet(self, kartannimi):
@@ -410,8 +408,6 @@ class Kartta:
 		# Lue arvot diktistä
 		if type(dikti) is dict:
 			self.lue_diktista(dikti, varustetietokanta)
-		else:
-			print(f"Annettu dikti on tyyppiä {type(dikti)}")
 
 	def __add__(self, varuste):
 		'''
@@ -448,13 +444,13 @@ class Kartta:
 		# print([type(dikti.get(a)) for a in dikti])
 		if type(dikti.get("Nimi")) is str:
 			self.nimi = dikti.get("Nimi")
-			print(f"Ladattu nimi: {self.nimi}")
+			# print(f"Ladattu nimi: {self.nimi}")
 			self.tyyppi = self.nimi.split("-")[0]
-			print(f"Ladattu tyyppi: {self.tyyppi}")
+			# print(f"Ladattu tyyppi: {self.tyyppi}")
 			self.maailma = int(self.nimi.split("-")[1])
-			print(f"Ladattu maailma: {self.maailma}")
+			# print(f"Ladattu maailma: {self.maailma}")
 			self.kartta  = int(self.nimi.split("-")[2])
-			print(f"Ladattu kartta: {self.kartta}")
+			# print(f"Ladattu kartta: {self.kartta}")
 		if type(dikti.get("Droppaa")) is list:
 			for varuste in dikti.get("Droppaa"):
 				# Valmiiksi varuste

@@ -119,14 +119,14 @@ class Tavaragridi(QtWidgets.QWidget):
 		varusteindeksi = 0
 		for i in range(5):
 			for j in range(5):
+				# Varusteen kuva sinne minne voi
 				if varusteindeksi < len(tavarat):
-					# print(f"{varusteindeksi}/{len(tavarat)}: kuva")
 					nappi = tavara_napiksi(tavarat[varusteindeksi], funktio)
+				# Tyhjät napit muualle
 				else:
-					# print(f"{varusteindeksi}/{len(tavarat)}: tyhjä")
 					nappi = tavara_napiksi(None, funktio)
+				# Paitsi ekaan ei-varustenappiin +
 				if varusteindeksi == len(tavarat):
-					# print(f"{varusteindeksi}/{len(tavarat)}: plussa")
 					nappi.setText("+")
 				self.grid.addWidget(nappi, i, j)
 				varusteindeksi += 1
@@ -336,24 +336,19 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.kartta = priluokat.Kartta()
 		self.karttakentta.setStyleSheet("background-color: salmon; color: black")
 		kartan_nimi = "Normaali-"+self.karttakentta.text()
-		print(f"Etsi kartta {kartan_nimi}")
 		# Etsi nimeä vastaava kartta karttatietokannasta
 		kartta = None
-		# print([k.nimi for k in self.karttatietokanta.karttalista])
 		for karttaehdokas in self.karttatietokanta.karttalista:
 			if karttaehdokas.nimi == kartan_nimi:
-				print(f"Mätsi")
 				self.nappi_kartta.setText("-")
 				self.nappi_kartta.setStyleSheet("background-color: salmon; color: black")
 				kartta = karttaehdokas
 				break
 		# Kartta löytyi
 		if kartta is not None:
-			print("Löytyi")
 			self.kartta = kartta
 			self.karttakentta.setStyleSheet("background-color: #6bff84; color: black")
 		else:
-			print("Ei löytynyt")
 			self.nappi_kartta.setText("+")
 			self.nappi_kartta.setStyleSheet("background-color: #6bff84; color: black")
 		self.tavaragridi.hide()
@@ -416,7 +411,6 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		Päivitä tarkastustavaran tiedot tarkastuskenttääm
 		(jotta saa luntittua ID:n ymv)
 		'''
-		print("Päivitä tarkastuskenttä")
 		valittu = self.tavaralista.currentIndex()
 		if valittu >= 0:
 			self.tavara = self.filtteroidyt_tavarat[valittu]
@@ -433,10 +427,7 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		Päivitä värinappien statukset ja filtteröintikriteerit.
 		'''
 		# Flippaa väri
-		print(f"Päivitä värinapit")
-		print(f"{vari} {self.varistatukset[vari]}")
 		self.varistatukset[vari] = not(self.varistatukset[vari])
-		print(f"-> {vari} {self.varistatukset[vari]}")
 		# Resetoi värifiltterivalikoima
 		self.filtterit["Väri"] = []
 		# Kaikki napit harmaaksi
