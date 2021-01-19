@@ -398,13 +398,12 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		self.paivita_varustelista()
 
 	def paivita_varustelista(self):
+		print(f"Päivitä filtterit")
 		varustenimet = [a.nimi for a in self.filtteroidyt_tavarat]
 		self.tavaralista.clear()
-		print("putsattu")
 		for nimi in varustenimet:
 			# print(nimi)
 			self.tavaralista.addItem(nimi)
-		print("Lisätty")
 
 	def paivita_tarkastuskentta(self):
 		'''

@@ -102,7 +102,6 @@ class Varuste:
 		'''
 		varikoodi = (self.id & 0xF00) >> 8
 		tyyppi    = (self.id & 0x080) >> 7
-		print(tyyppi)
 		indeksi   =  self.id & 0x07F
 		vari = "Määrittelemättömän värinen"
 		for avain in VARIKOODIT:
@@ -305,7 +304,6 @@ class Varustetietokanta:
 		annetun diktin perusteella
 		esim. "Vain violetit keihäät" tmv.
 		'''
-		print("Filtteröi")
 		filtteroity = []
 		vari_ok = False
 		for varuste in self.varustelista:
