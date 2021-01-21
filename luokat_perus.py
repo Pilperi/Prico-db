@@ -161,7 +161,7 @@ class Varuste:
 				dikti["Droppaa"].append(kartta.nimi)
 			else:
 				dikti["Droppaa"].append(kartta)
-		json_str = json.dumps(dikti)
+		json_str = json.dumps(dikti, separators=(',', ':'))
 		return(json_str)
 
 	def lue_diktista(self, dikti):
@@ -338,6 +338,7 @@ class Varustetietokanta:
 		kirjatuista varusteista.
 		'''
 		st = f"{{\n\"Aikaleima\":{self.aikaleima},\n\"Varusteet\": ["
+		sortatutvarusteet = sorted(self.varustelista, key=lambda varuste: varuste.id)
 		for v,varuste in enumerate(self.varustelista):
 			st += "\n  {:s}{:s}".format(varuste.jsoniksi(), ","*(v<(len(self.varustelista)-1)))
 		st += "\n]\n}\n"
@@ -432,7 +433,7 @@ class Kartta:
                 "Nimi":    self.nimi,
                 "Droppaa": varustelista
                 }
-		st += json.dumps(dikti)
+		st += json.dumps(dikti, separators=(',', ':'))
 		return(st)
 
 	def lue_diktista(self, dikti, varustetietokanta):
@@ -488,9 +489,10 @@ class Karttatietokanta:
 		JSON-stringi itsestä, ml. katetut kartat.
 		'''
 		st = ""
+		sortatutkartat = sorted(self.karttalista, key=lambda kartta: kartta.maailma*100+kartta.kartta)
 		dikti = {"Aikaleima": self.hanki_aikaleima(),
-                 "Kartat": [str(kartta) for kartta in self.karttalista]}
-		st += json.dumps(dikti)
+                 "Kartat": [str(kartta) for kartta in sortatutkartat]}
+		st += json.dumps(dikti, separators=(',', ':'), indent=0)
 		return(st)
 
 	def hanki_aikaleima(self, aika="nyt"):
