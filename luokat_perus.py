@@ -156,11 +156,9 @@ class Varuste:
 				"Droppaa":    [], # pelkät nimistringit
 				"Aliakset":   self.aliakset
 				}
+		self.droppaa = sorted(self.droppaa, key=lambda t: 100*t.maailma + t.kartta)
 		for kartta in self.droppaa:
-			if type(kartta) is Kartta:
-				dikti["Droppaa"].append(kartta.nimi)
-			else:
-				dikti["Droppaa"].append(kartta)
+			dikti["Droppaa"].append(kartta.nimi)
 		json_str = json.dumps(dikti, separators=(',', ':'))
 		return(json_str)
 
@@ -428,6 +426,7 @@ class Kartta:
 		'''
 		st = ""
 		varustelista = [varuste.id for varuste in self.droppaa if type(varuste) is Varuste]   # varusteista id
+		varustelista = sorted(varustelista, key=lambda t: t.id) # järjestä ID:n mukaan
 		varustelista += [varuste for varuste in self.droppaa if type(varuste) is not Varuste] # muut sellaisenaan
 		dikti = {
                 "Nimi":    self.nimi,
@@ -463,6 +462,7 @@ class Kartta:
 				# Laita sellaisenaan jos ei muuta keksitä
 				else:
 					self.droppaa.append(varuste)
+			self.droppaa = sorted(self.droppaa, key=lambda t: t.id)
 
 class Karttatietokanta:
 	'''Luokka karttakokoelmalle'''
