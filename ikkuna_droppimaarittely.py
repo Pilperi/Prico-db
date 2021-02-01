@@ -520,10 +520,13 @@ class Paaikkuna(QtWidgets.QMainWindow):
 		if type(varuste) is priluokat.Varuste and varuste in self.kartta.droppaa:
 			print(f"Poista {varuste.nimi} kartan {self.kartta.nimi} dropeista")
 			self.kartta.droppaa.remove(varuste)
+			if self.kartta in varuste.droppaa:
+				varuste.droppaa.remove(self.kartta)
 		else:
 			print(f"Lisää {self.tavara.nimi} kartan {self.kartta.nimi} droppeihin")
 			if self.tavara not in self.kartta.droppaa:
 				self.kartta.droppaa.append(self.tavara)
+			if self.kartta not in self.tavara.droppaa:
 				self.tavara.droppaa.append(self.kartta)
 		self.etsi_kartan_tiedot()
 		self.karttatietokanta.tallenna("karttatietokanta.json")

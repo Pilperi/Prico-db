@@ -386,6 +386,37 @@ class Varustetietokanta:
 		else:
 			print(f"Tiedostoa {tiedostopolku} ei ole olemassa...")
 
+	def kartat_pointtereiksi(self, karttatietokanta):
+		'''
+		Muunna varusteiden dropit str -> Kartta.
+		'''
+		for varuste in self.varustelista:
+			poista = []
+			for k, kartta in enumerate(varuste.droppaa):
+				if type(kartta) is str:
+					kartta = karttatietokanta.etsi_kartta(kartta)
+					# Etsi kartta nimen perusteella ja korvaa str -> pointteri
+					if kartta is not None:
+						if varuste in kartta.droppaa:
+							varuste.droppaa[k] = kartta
+						# Pois tällaset
+						else:
+							print(f"Varuste {varuste.nimi} väittää tulevansa kartasta {kartta.nimi} mutta kartta eri mieltä.")
+							poista.append(k)
+					# Pois tällaset
+					else:
+						poista.append(k)
+			poista.reverse()
+			for indeksi in poista:
+				d = varuste.droppaa.pop(indeksi)
+		# Tarkista myös toiseen suuntaan:
+		# jos karttaan on merkitty että sieltä droppaa X,
+		# onhan X:ään myös merkitty että se droppaa kartasta?
+		for kartta in karttatietokanta.karttalista:
+			for varuste in kartta.droppaa:
+				if kartta not in varuste.droppaa:
+					varuste.droppaa.append(kartta)
+
 class Kartta:
 	"""Luokka kartan dropeille"""
 	def __init__(self, tyyppi="Normaali", maailma=0, kartta=0, droppaa=None, dikti=None, varustetietokanta=None):
@@ -425,9 +456,9 @@ class Kartta:
 		JSON-stringi itsestä.
 		'''
 		st = ""
-		varustelista = [varuste.id for varuste in self.droppaa if type(varuste) is Varuste]   # varusteista id
-		varustelista = sorted(varustelista, key=lambda t: t.id) # järjestä ID:n mukaan
-		varustelista += [varuste for varuste in self.droppaa if type(varuste) is not Varuste] # muut sellaisenaan
+		varustelista = [varuste.id for varuste in self.droppaa]
+		varustelista = sorted(varustelista)
+		varustelista.reverse()
 		dikti = {
                 "Nimi":    self.nimi,
                 "Droppaa": varustelista
@@ -452,17 +483,13 @@ class Kartta:
 		if type(dikti.get("Droppaa")) is list:
 			for varuste in dikti.get("Droppaa"):
 				# Valmiiksi varuste
-				if type(varuste) is Varuste:
+				if type(varuste) is Varuste and varuste not in self.droppaa:
 					self.droppaa.append(varuste)
 				# Hae ID:llä varustetietokannasta
 				elif type(varustetietokanta) is Varustetietokanta:
 					varustepointteri = varustetietokanta.etsi_varusteid(varuste)
-					if varustepointteri is not None:
+					if varustepointteri is not None and varustepointteri not in self.droppaa:
 						self.droppaa.append(varustepointteri)
-				# Laita sellaisenaan jos ei muuta keksitä
-				else:
-					self.droppaa.append(varuste)
-			self.droppaa = sorted(self.droppaa, key=lambda t: t.id)
 
 class Karttatietokanta:
 	'''Luokka karttakokoelmalle'''
@@ -539,6 +566,7 @@ class Karttatietokanta:
 				kartta = Kartta(dikti=json.loads(karttadikti), varustetietokanta=varustetietokanta)
 				kartat.append(kartta)
 			self.karttalista = kartat
+		varustetietokanta.kartat_pointtereiksi(self)
 
 	def tallenna(self, tiedostopolku):
 		'''
